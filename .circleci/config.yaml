@@ -1,0 +1,66 @@
+version: 2.1
+
+orbs: 
+  node: cimg/node:23  # Use a more recent Node.js version
+
+jobs:
+  build:
+    docker:
+      - image: cimg/node:23  # Use a more recent Node.js version
+
+    working_directory: ~/app
+
+    steps: 
+      - checkout  # Pull the latest changes from GitHub
+
+      - setup_remote_docker  # Enable Docker CLI in CircleCI
+
+      # Restore cached dependencies if available
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "package.json" }}
+            - v1-dependencies-
+
+    # Restore cached dependencies if available
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "package.json" }}
+            - v1-dependencies-
+
+       # Clear npm cache to avoid outdated dependencies
+      - run:
+          name: Clear npm cache
+          command: npm cache clean --force
+
+       # Install dependencies
+      - run:
+          name: Install dependencies
+          command: npm install
+      
+      # Save dependency cache
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-dependencies-{{ checksum "package.json" }}
+
+      # Run tests
+      - run:
+          name: Run tests
+          command: npm test
+
+      # Build and push Docker image on success
+      - run:
+          name: Build and Push Docker Image
+          when: on_success
+          command: |
+            docker --version
+            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            docker build -t $DOCKER_USERNAME/$CIRCLE_PROJECT_REPONAME:$CIRCLE_BRANCH .
+            docker push $DOCKER_USERNAME/$CIRCLE_PROJECT_REPONAME:$CIRCLE_BRANCH
+            echo "Docker build successfully completed!"
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - build
