@@ -5,7 +5,6 @@ var logger = require('morgan');
 var bodyParser = require('body-parser');
 
 var indexRouter = require('./routes/index');
-var spasRouter = require('./routes/spas');
 
 var app = express();
 
@@ -17,7 +16,6 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', indexRouter);
-app.use('/spas', spasRouter);
+app.use('/api/v1/forms', indexRouter);
 
 module.exports = app;
