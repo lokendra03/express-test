@@ -1,0 +1,37 @@
+namespace: test  # Namespace for the deployment
+
+replicaCount: 2
+
+image:
+  repository: 388447629311.dkr.ecr.us-east-1.amazonaws.com/app-store
+  tag: "v1.0"
+  pullPolicy: Always
+
+deploymentStrategy:
+  type: RollingUpdate  # Options: RollingUpdate, Recreate
+  rollingUpdate: 
+    maxUnavailable: 1
+    maxSurge: 1
+
+service:
+  type: NodePort  # Change to LoadBalancer if needed
+  port: 80
+  targetPort: 3000
+  nodePort: 31234
+
+ingress:
+  enabled: false
+
+probes:
+  liveness:
+    httpGet:
+      path: /
+      port: 3000
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readiness:
+    httpGet:
+      path: /
+      port: 3000
+    initialDelaySeconds: 5
+    periodSeconds: 10
