@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  aws-ecr: orbies/aws-ecr@1.2.1
+  aws-ecr: circleci/aws-ecr@7.3.0  # ✅ Use official CircleCI AWS ECR Orb
 
 jobs:
   install_helm_chart:
@@ -25,6 +25,16 @@ jobs:
           name: Install and configure helm
           command: sudo curl -L https://get.helm.sh/helm-v3.10.1-linux-amd64.tar.gz | tar xz && sudo mv linux-amd64/helm /bin/helm && sudo rm -rf linux-amd64
       - run:
+        name: Configure AWS CLI with Temporary Credentials
+        command: |
+          mkdir -p ~/.aws
+          echo "[default]" > ~/.aws/credentials
+          echo "aws_access_key_id = $AWS_ACCESS_KEY_ID" >> ~/.aws/credentials
+          echo "aws_secret_access_key = $AWS_SECRET_ACCESS_KEY" >> ~/.aws/credentials
+          echo "aws_session_token = $AWS_SESSION_TOKEN" >> ~/.aws/credentials
+          echo "[default]" > ~/.aws/config
+          echo "region = $AWS_DEFAULT_REGION" >> ~/.aws/config
+      - run:
           name: "docker login"
           command: |
             aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ECR_ACCOUNT_URL
@@ -46,6 +56,7 @@ workflows:
       - aws-ecr/build-and-push-image:
           aws-access-key-id: AWS_ACCESS_KEY_ID
           aws-secret-access-key: AWS_SECRET_ACCESS_KEY
+          aws-session-token: AWS_SESSION_TOKEN
           repo: "${AWS_ECR_REPO_NAME}"
           docker-login: false
           account-url: AWS_ECR_ACCOUNT_URL
@@ -55,6 +66,7 @@ workflows:
           account-url: AWS_ECR_ACCOUNT_URL
           aws-access-key-id: AWS_ACCESS_KEY_ID
           aws-secret-access-key: AWS_SECRET_ACCESS_KEY
+          aws-session-token: AWS_SESSION_TOKEN
           create-repo: false
           path: ./charts
           region: AWS_DEFAULT_REGION
