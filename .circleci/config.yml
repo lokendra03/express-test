@@ -1,139 +1,75 @@
+
+
 version: 2.1
 
 orbs:
-  aws-ecr: orbies/aws-ecr@1.2.1
+  aws-ecr: circleci/aws-ecr@9.3.7 # ✅ Secure AWS ECR Orb for pushing images
+  aws-cli: circleci/aws-cli@5.2.0 # ✅ Secure AWS CLI Orb for authentication
+  aws-eks: circleci/aws-eks@2.2.0 # ✅ Kubernetes Orb for deploying
 
 jobs:
   install_helm_chart:
     docker:
+      - image: cimg/python:3.13.2
+      resource_class: medium
+    steps:
+      - checkout
+      - aws-cli/setup # ✅ Secure AWS CLI setup using environment variables
+
+      - aws-eks/update-kubeconfig:
+          cluster-name: $AWS_EKS_CLUSTER_NAME
+          aws-region: $AWS_CLUSTER_REGION # ✅ Securely authenticate with EKS
+
+      - run:
+          name: Install Helm
+          command: |
+            curl -L https://get.helm.sh/helm-v3.10.1-linux-amd64.tar.gz | tar xz
+            sudo mv linux-amd64/helm /usr/local/bin/helm
+
+      - run:
+          name: Deploy Helm Chart
+          command: |
+            helm upgrade --install test-server ./charts \
+              --namespace test \
+              --set image.repository=$AWS_ECR_ACCOUNT_URL/$AWS_ECR_REPO_NAME \
+              --set image.tag=0.1.0 \
+              --set service.type=NodePort
+
+  push-helm-chart:
+    docker:
       - image: cimg/python:3.10.7
     steps:
       - checkout
+      - aws-cli/setup
       - run:
-          name: Install awscli
-          command: curl --silent "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip awscliv2.zip && sudo ./aws/install
+          name: Package Helm Chart
+          command: helm package ./charts --destination ./charts
       - run:
-          name: Install eksctl
-          command: curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp && sudo mv /tmp/eksctl /usr/local/bin
-      - run:
-          name: Install and configure kubectl
-          command: curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && kubectl version --client
-      - run:
-          name: Install and configure kubectl aws-iam-authenticator
-          command: curl -Lo aws-iam-authenticator https://github.com/kubernetes-sigs/aws-iam-authenticator/releases/download/v0.5.9/aws-iam-authenticator_0.5.9_linux_amd64 && chmod +x ./aws-iam-authenticator && mkdir -p $HOME/bin && cp ./aws-iam-authenticator $HOME/bin/aws-iam-authenticator && export PATH=$PATH:$HOME/bin
-      - run:
-          name: Install and configure helm
-          command: sudo curl -L https://get.helm.sh/helm-v3.10.1-linux-amd64.tar.gz | tar xz && sudo mv linux-amd64/helm /bin/helm && sudo rm -rf linux-amd64
-      - run:
-          name: "docker login"
-          command: |
-            aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ECR_ACCOUNT_URL
-      - run:
-          name: "helm login"
+          name: Push Helm Chart to AWS ECR
           command: |
             aws ecr get-login-password --region $AWS_DEFAULT_REGION | helm registry login --username AWS --password-stdin $AWS_ECR_ACCOUNT_URL
-      - run:
-          name: "cluster configs"
-          command: |
-            eksctl utils write-kubeconfig --cluster=$AWS_EKS_CLUSTER_NAME --region=$AWS_CLUSTER_REGION
-      - run:
-          name: "helm install"
-          command: bash ./scripts/deploy-flask.sh 1.0.0 $AWS_ECR_ACCOUNT_URL $AWS_ECR_HELM_REPO_NAME
+            helm push ./charts/*.tgz oci://$AWS_ECR_ACCOUNT_URL
 
 workflows:
-  build_and_push_image:
+  build_and_deploy:
     jobs:
-      - aws-ecr/build-and-push-image:
+      - aws-ecr/push-image:
           aws-access-key-id: AWS_ACCESS_KEY_ID
           aws-secret-access-key: AWS_SECRET_ACCESS_KEY
+          aws-session-token: AWS_SESSION_TOKEN
           repo: "${AWS_ECR_REPO_NAME}"
-          docker-login: false
+          docker-login: false # ✅ No need for docker login in build job
           account-url: AWS_ECR_ACCOUNT_URL
           region: AWS_DEFAULT_REGION
-          tag: "latest"
-      - aws-ecr/push-helm-chart:
-          account-url: AWS_ECR_ACCOUNT_URL
-          aws-access-key-id: AWS_ACCESS_KEY_ID
-          aws-secret-access-key: AWS_SECRET_ACCESS_KEY
-          create-repo: false
-          path: ./charts
-          region: AWS_DEFAULT_REGION
-          repo: "${AWS_ECR_HELM_REPO_NAME}"
-          tag: 1.0.0
+          tag: "0.1.0"
+      - push-helm-chart:
           requires:
-            - aws-ecr/build-and-push-image
+            - aws-ecr/push-image
       - install_helm_chart:
           requires:
-            - aws-ecr/push-helm-chart
+            - push-helm-chart
 
 
-# version: 2.1
-
-# orbs:
-#   aws-ecr: circleci/aws-ecr@9.3.7 # ✅ Secure AWS ECR Orb for pushing images
-#   aws-cli: circleci/aws-cli@5.2.0 # ✅ Secure AWS CLI Orb for authentication
-#   aws-eks: circleci/aws-eks@2.2.0 # ✅ Kubernetes Orb for deploying
-
-# jobs:
-#   install_helm_chart:
-#     docker:
-#       - image: cimg/python:3.13.2
-#     steps:
-#       - checkout
-#       - aws-cli/setup # ✅ Secure AWS CLI setup using environment variables
-
-#       - aws-eks/update-kubeconfig:
-#           cluster-name: $AWS_EKS_CLUSTER_NAME
-#           aws-region: $AWS_CLUSTER_REGION # ✅ Securely authenticate with EKS
-
-#       - run:
-#           name: Install Helm
-#           command: |
-#             curl -L https://get.helm.sh/helm-v3.10.1-linux-amd64.tar.gz | tar xz
-#             sudo mv linux-amd64/helm /usr/local/bin/helm
-
-#       - run:
-#           name: Deploy Helm Chart
-#           command: |
-#             helm upgrade --install test-server ./charts \
-#               --namespace test \
-#               --set image.repository=$AWS_ECR_ACCOUNT_URL/$AWS_ECR_REPO_NAME \
-#               --set image.tag=0.1.0 \
-#               --set service.type=NodePort
-
-#   push-helm-chart:
-#     docker:
-#       - image: cimg/python:3.10.7
-#     steps:
-#       - checkout
-#       - aws-cli/setup
-#       - run:
-#           name: Package Helm Chart
-#           command: helm package ./charts --destination ./charts
-#       - run:
-#           name: Push Helm Chart to AWS ECR
-#           command: |
-#             aws ecr get-login-password --region $AWS_DEFAULT_REGION | helm registry login --username AWS --password-stdin $AWS_ECR_ACCOUNT_URL
-#             helm push ./charts/*.tgz oci://$AWS_ECR_ACCOUNT_URL
-
-# workflows:
-#   build_and_deploy:
-#     jobs:
-#       - aws-ecr/push-image:
-#           aws-access-key-id: AWS_ACCESS_KEY_ID
-#           aws-secret-access-key: AWS_SECRET_ACCESS_KEY
-#           aws-session-token: AWS_SESSION_TOKEN
-#           repo: "${AWS_ECR_REPO_NAME}"
-#           docker-login: false # ✅ No need for docker login in build job
-#           account-url: AWS_ECR_ACCOUNT_URL
-#           region: AWS_DEFAULT_REGION
-#           tag: "0.1.0"
-#       - push-helm-chart:
-#           requires:
-#             - aws-ecr/push-image
-#       - install_helm_chart:
-#           requires:
-#             - push-helm-chart
 # version: 2.1
 
 # orbs:
