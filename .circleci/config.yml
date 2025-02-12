@@ -50,7 +50,7 @@ jobs:
 workflows:
   build_and_deploy:
     jobs:
-      - aws-ecr/build-and-push-image:
+      - aws-ecr/push-image:
           aws-access-key-id: AWS_ACCESS_KEY_ID
           aws-secret-access-key: AWS_SECRET_ACCESS_KEY
           aws-session-token: AWS_SESSION_TOKEN
@@ -61,7 +61,7 @@ workflows:
           tag: "0.1.0"
       - push-helm-chart:
           requires:
-            - aws-ecr/build-and-push-image
+            - aws-ecr/push-image
       - install_helm_chart:
           requires:
             - push-helm-chart
