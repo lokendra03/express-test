@@ -73,9 +73,9 @@ orbs:
 jobs:
   install_helm_chart:
     machine:
-      image: default
-    docker:
-      - image: cimg/python:3.6
+      image: ubuntu-2204:current
+    # docker:
+    #   - image: cimg/python:3.6
     steps:
       - checkout
       - run:
