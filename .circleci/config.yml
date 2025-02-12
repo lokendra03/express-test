@@ -72,7 +72,7 @@ orbs:
 
 jobs:
   install_helm_chart:
-  machine:
+    machine:
       image: default
     docker:
       - image: cimg/python:3.6
