@@ -6,7 +6,7 @@ orbs:
 jobs:
   install_helm_chart:
     docker:
-      - image: cimg/node:22.6.0 # Use a more recent Node.js version
+      - image: cimg/python:3.6 
     steps:
       - checkout
       - run:
