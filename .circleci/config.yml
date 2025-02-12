@@ -74,6 +74,7 @@ jobs:
   install_helm_chart:
     machine:
       image: ubuntu-2204:current
+      resource_class: medium
     # docker:
     #   - image: cimg/python:3.6
     steps:
