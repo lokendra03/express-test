@@ -1,5 +1,3 @@
-
-
 # version: 2.1
 
 # orbs:
@@ -74,21 +72,40 @@
 #           requires:
 #             - push-helm-chart
 
-
 version: 2.1
 
 orbs:
   aws-ecr: orbies/aws-ecr@1.2.1
+  aws-cli: circleci/aws-cli@5.2.0
 
 executors:
   docker-executor:
     docker:
       - image: cimg/python:3.10.7
-    resource_class: medium  # ✅ Now resource_class is properly assign
+    resource_class: medium # ✅ Now resource_class is properly assign
 
 jobs:
+  setup_aws_credentials:
+    executor: docker-executor
+    steps:
+      - checkout
+      - aws-cli/setup # ✅ Ensures AWS CLI is installed
+      - run:
+          name: Configure AWS CLI with Temporary Credentials
+          command: |
+            mkdir -p ~/.aws
+            echo "[default]" > ~/.aws/credentials
+            echo "aws_access_key_id = $AWS_ACCESS_KEY_ID" >> ~/.aws/credentials
+            echo "aws_secret_access_key = $AWS_SECRET_ACCESS_KEY" >> ~/.aws/credentials
+            echo "aws_session_token = $AWS_SESSION_TOKEN" >> ~/.aws/credentials
+            echo "[default]" > ~/.aws/config
+            echo "region = $AWS_DEFAULT_REGION" >> ~/.aws/config
+      - run:
+          name: Verify AWS Authentication
+          command: aws sts get-caller-identity # ✅ Confirms AWS credentials are working
+
   install_helm_chart:
-    executor: docker-executor  # ✅ Using the defined executor
+    executor: docker-executor # ✅ Using the defined executor
     steps:
       - checkout
       - setup_remote_docker:
@@ -108,19 +125,19 @@ jobs:
       - run:
           name: Install and configure helm
           command: sudo curl -L https://get.helm.sh/helm-v3.10.1-linux-amd64.tar.gz | tar xz && sudo mv linux-amd64/helm /bin/helm && sudo rm -rf linux-amd64
-      - run:
-          name: Configure AWS CLI with Temporary Credentials
-          command: |
-            mkdir -p ~/.aws
-            echo "[default]" > ~/.aws/credentials
-            echo "aws_access_key_id = $AWS_ACCESS_KEY_ID" >> ~/.aws/credentials
-            echo "aws_secret_access_key = $AWS_SECRET_ACCESS_KEY" >> ~/.aws/credentials
-            echo "aws_session_token = $AWS_SESSION_TOKEN" >> ~/.aws/credentials
-            echo "[default]" > ~/.aws/config
-            echo "region = $AWS_DEFAULT_REGION" >> ~/.aws/config
-      - run:
-          name: Verify AWS Authentication
-          command: aws sts get-caller-identity
+      # - run:
+      #     name: Configure AWS CLI with Temporary Credentials
+      #     command: |
+      #       mkdir -p ~/.aws
+      #       echo "[default]" > ~/.aws/credentials
+      #       echo "aws_access_key_id = $AWS_ACCESS_KEY_ID" >> ~/.aws/credentials
+      #       echo "aws_secret_access_key = $AWS_SECRET_ACCESS_KEY" >> ~/.aws/credentials
+      #       echo "aws_session_token = $AWS_SESSION_TOKEN" >> ~/.aws/credentials
+      #       echo "[default]" > ~/.aws/config
+      #       echo "region = $AWS_DEFAULT_REGION" >> ~/.aws/config
+      # - run:
+      #     name: Verify AWS Authentication
+      #     command: aws sts get-caller-identity
       - run:
           name: "docker login"
           command: |
@@ -140,8 +157,9 @@ jobs:
 workflows:
   build_and_push_image:
     jobs:
+      - setup_aws_credentials
       - aws-ecr/build-and-push-image:
-          executor: docker-executor  # ✅ Using the defined executor
+          executor: docker-executor # ✅ Using the defined executor
           aws-access-key-id: AWS_ACCESS_KEY_ID
           aws-secret-access-key: AWS_SECRET_ACCESS_KEY
           # aws-session-token: AWS_SESSION_TOKEN
@@ -150,8 +168,10 @@ workflows:
           account-url: AWS_ECR_ACCOUNT_URL
           region: AWS_DEFAULT_REGION
           tag: "v1.0"
+          requires:
+            - setup_aws_credentials
       - aws-ecr/push-helm-chart:
-          executor: docker-executor  # ✅ Using the defined executor
+          executor: docker-executor # ✅ Using the defined executor
           account-url: AWS_ECR_ACCOUNT_URL
           aws-access-key-id: AWS_ACCESS_KEY_ID
           aws-secret-access-key: AWS_SECRET_ACCESS_KEY
@@ -167,7 +187,6 @@ workflows:
       - install_helm_chart:
           requires:
             - aws-ecr/push-helm-chart
-
 # version: 2.1
 
 # jobs:
