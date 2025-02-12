@@ -132,6 +132,7 @@ workflows:
           aws-access-key-id: AWS_ACCESS_KEY_ID
           aws-secret-access-key: AWS_SECRET_ACCESS_KEY
           # aws-session-token: AWS_SESSION_TOKEN
+          resource_class: medium  # ✅ Explicitly setting resource class
           repo: "${AWS_ECR_REPO_NAME}"
           docker-login: false
           account-url: AWS_ECR_ACCOUNT_URL
@@ -141,6 +142,7 @@ workflows:
           account-url: AWS_ECR_ACCOUNT_URL
           aws-access-key-id: AWS_ACCESS_KEY_ID
           aws-secret-access-key: AWS_SECRET_ACCESS_KEY
+          resource_class: medium  # ✅ Explicitly setting resource class
           # aws-session-token: AWS_SESSION_TOKEN
           create-repo: false
           path: ./charts
