@@ -65,148 +65,148 @@
 #       - install_helm_chart:
 #           requires:
 #             - push-helm-chart
-version: 2.1
-
-orbs:
-  aws-ecr: orbies/aws-ecr@1.2.1
-
-jobs:
-  install_helm_chart:
-    docker:
-      - image: cimg/python:3.6
-    steps:
-      - checkout
-      - setup_remote_docker:
-          version: 20.10.7
-      - run:
-          name: Install awscli
-          command: curl --silent "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip awscliv2.zip && sudo ./aws/install
-      - run:
-          name: Install eksctl
-          command: curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp && sudo mv /tmp/eksctl /usr/local/bin
-      - run:
-          name: Install and configure kubectl
-          command: curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && kubectl version --client
-      # - run:
-      #     name: Install and configure kubectl aws-iam-authenticator
-      #     command: curl -Lo aws-iam-authenticator https://github.com/kubernetes-sigs/aws-iam-authenticator/releases/download/v0.5.9/aws-iam-authenticator_0.5.9_linux_amd64 && chmod +x ./aws-iam-authenticator && mkdir -p $HOME/bin && cp ./aws-iam-authenticator $HOME/bin/aws-iam-authenticator && export PATH=$PATH:$HOME/bin
-      - run:
-          name: Install and configure helm
-          command: sudo curl -L https://get.helm.sh/helm-v3.10.1-linux-amd64.tar.gz | tar xz && sudo mv linux-amd64/helm /bin/helm && sudo rm -rf linux-amd64
-      - run:
-          name: Configure AWS CLI with Temporary Credentials
-          command: |
-            mkdir -p ~/.aws
-            echo "[default]" > ~/.aws/credentials
-            echo "aws_access_key_id = $AWS_ACCESS_KEY_ID" >> ~/.aws/credentials
-            echo "aws_secret_access_key = $AWS_SECRET_ACCESS_KEY" >> ~/.aws/credentials
-            echo "aws_session_token = $AWS_SESSION_TOKEN" >> ~/.aws/credentials
-            echo "[default]" > ~/.aws/config
-            echo "region = $AWS_DEFAULT_REGION" >> ~/.aws/config
-      - run:
-          name: "docker login"
-          command: |
-            aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ECR_ACCOUNT_URL
-      - run:
-          name: "helm login"
-          command: |
-            aws ecr get-login-password --region $AWS_DEFAULT_REGION | helm registry login --username AWS --password-stdin $AWS_ECR_ACCOUNT_URL
-      - run:
-          name: "cluster configs"
-          command: |
-            eksctl utils write-kubeconfig --cluster=$AWS_EKS_CLUSTER_NAME --region=$AWS_CLUSTER_REGION
-      - run:
-          name: "helm install"
-          command: bash ./scripts/backend-helm.sh 0.1.0 $AWS_ECR_ACCOUNT_URL $AWS_ECR_HELM_REPO_NAME
-
-workflows:
-  build_and_push_image:
-    jobs:
-      - aws-ecr/build-and-push-image:
-          aws-access-key-id: AWS_ACCESS_KEY_ID
-          aws-secret-access-key: AWS_SECRET_ACCESS_KEY
-          # aws-session-token: AWS_SESSION_TOKEN
-          repo: "${AWS_ECR_REPO_NAME}"
-          docker-login: false
-          account-url: AWS_ECR_ACCOUNT_URL
-          region: AWS_DEFAULT_REGION
-          tag: "v1.0"
-      - aws-ecr/push-helm-chart:
-          account-url: AWS_ECR_ACCOUNT_URL
-          aws-access-key-id: AWS_ACCESS_KEY_ID
-          aws-secret-access-key: AWS_SECRET_ACCESS_KEY
-          # aws-session-token: AWS_SESSION_TOKEN
-          create-repo: false
-          path: ./charts
-          region: AWS_DEFAULT_REGION
-          repo: "${AWS_ECR_HELM_REPO_NAME}"
-          tag: 0.1.0
-          requires:
-            - aws-ecr/build-and-push-image
-      - install_helm_chart:
-          requires:
-            - aws-ecr/push-helm-chart
-
 # version: 2.1
 
+# orbs:
+#   aws-ecr: orbies/aws-ecr@1.2.1
+
 # jobs:
-#   build:
+#   install_helm_chart:
 #     docker:
-#       - image: cimg/node:22.6.0 # Use a more recent Node.js version
-
-#     working_directory: ~/app
-
+#       - image: cimg/python:3.6
 #     steps:
-#       - checkout  # Pull the latest changes from GitHub
-
-#       - setup_remote_docker  # Enable Docker CLI in CircleCI
-
-#       # Restore cached dependencies if available
-#       - restore_cache:
-#           keys:
-#             - v1-dependencies-{{ checksum "package.json" }}
-#             - v1-dependencies-
-
-#     # Restore cached dependencies if available
-#       - restore_cache:
-#           keys:
-#             - v1-dependencies-{{ checksum "package.json" }}
-#             - v1-dependencies-
-
-#        # Clear npm cache to avoid outdated dependencies
+#       - checkout
+#       - setup_remote_docker:
+#           version: 20.10.7
 #       - run:
-#           name: Clear npm cache
-#           command: npm cache clean --force
-
-#        # Install dependencies
+#           name: Install awscli
+#           command: curl --silent "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip awscliv2.zip && sudo ./aws/install
 #       - run:
-#           name: Install dependencies
-#           command: npm install
-
-#       # Save dependency cache
-#       - save_cache:
-#           paths:
-#             - node_modules
-#           key: v1-dependencies-{{ checksum "package.json" }}
-
-#       # Run tests
+#           name: Install eksctl
+#           command: curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp && sudo mv /tmp/eksctl /usr/local/bin
 #       - run:
-#           name: Run tests
-#           command: npm test
-
-#       # Build and push Docker image on success
+#           name: Install and configure kubectl
+#           command: curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && kubectl version --client
+#       # - run:
+#       #     name: Install and configure kubectl aws-iam-authenticator
+#       #     command: curl -Lo aws-iam-authenticator https://github.com/kubernetes-sigs/aws-iam-authenticator/releases/download/v0.5.9/aws-iam-authenticator_0.5.9_linux_amd64 && chmod +x ./aws-iam-authenticator && mkdir -p $HOME/bin && cp ./aws-iam-authenticator $HOME/bin/aws-iam-authenticator && export PATH=$PATH:$HOME/bin
 #       - run:
-#           name: Build and Push Docker Image
-#           when: on_success
+#           name: Install and configure helm
+#           command: sudo curl -L https://get.helm.sh/helm-v3.10.1-linux-amd64.tar.gz | tar xz && sudo mv linux-amd64/helm /bin/helm && sudo rm -rf linux-amd64
+#       - run:
+#           name: Configure AWS CLI with Temporary Credentials
 #           command: |
-#             docker --version
-#             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-#             docker build -t $DOCKER_USERNAME/$CIRCLE_PROJECT_REPONAME:$CIRCLE_BRANCH .
-#             docker push $DOCKER_USERNAME/$CIRCLE_PROJECT_REPONAME:$CIRCLE_BRANCH
-#             echo "Docker build successfully completed!"
+#             mkdir -p ~/.aws
+#             echo "[default]" > ~/.aws/credentials
+#             echo "aws_access_key_id = $AWS_ACCESS_KEY_ID" >> ~/.aws/credentials
+#             echo "aws_secret_access_key = $AWS_SECRET_ACCESS_KEY" >> ~/.aws/credentials
+#             echo "aws_session_token = $AWS_SESSION_TOKEN" >> ~/.aws/credentials
+#             echo "[default]" > ~/.aws/config
+#             echo "region = $AWS_DEFAULT_REGION" >> ~/.aws/config
+#       - run:
+#           name: "docker login"
+#           command: |
+#             aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ECR_ACCOUNT_URL
+#       - run:
+#           name: "helm login"
+#           command: |
+#             aws ecr get-login-password --region $AWS_DEFAULT_REGION | helm registry login --username AWS --password-stdin $AWS_ECR_ACCOUNT_URL
+#       - run:
+#           name: "cluster configs"
+#           command: |
+#             eksctl utils write-kubeconfig --cluster=$AWS_EKS_CLUSTER_NAME --region=$AWS_CLUSTER_REGION
+#       - run:
+#           name: "helm install"
+#           command: bash ./scripts/backend-helm.sh 0.1.0 $AWS_ECR_ACCOUNT_URL $AWS_ECR_HELM_REPO_NAME
 
 # workflows:
-#   version: 2
-#   build_and_test:
+#   build_and_push_image:
 #     jobs:
-#       - build
+#       - aws-ecr/build-and-push-image:
+#           aws-access-key-id: AWS_ACCESS_KEY_ID
+#           aws-secret-access-key: AWS_SECRET_ACCESS_KEY
+#           # aws-session-token: AWS_SESSION_TOKEN
+#           repo: "${AWS_ECR_REPO_NAME}"
+#           docker-login: false
+#           account-url: AWS_ECR_ACCOUNT_URL
+#           region: AWS_DEFAULT_REGION
+#           tag: "v1.0"
+#       - aws-ecr/push-helm-chart:
+#           account-url: AWS_ECR_ACCOUNT_URL
+#           aws-access-key-id: AWS_ACCESS_KEY_ID
+#           aws-secret-access-key: AWS_SECRET_ACCESS_KEY
+#           # aws-session-token: AWS_SESSION_TOKEN
+#           create-repo: false
+#           path: ./charts
+#           region: AWS_DEFAULT_REGION
+#           repo: "${AWS_ECR_HELM_REPO_NAME}"
+#           tag: 0.1.0
+#           requires:
+#             - aws-ecr/build-and-push-image
+#       - install_helm_chart:
+#           requires:
+#             - aws-ecr/push-helm-chart
+
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      - image: cimg/node:22.6.0 # Use a more recent Node.js version
+
+    working_directory: ~/app
+
+    steps:
+      - checkout  # Pull the latest changes from GitHub
+
+      - setup_remote_docker  # Enable Docker CLI in CircleCI
+
+      # Restore cached dependencies if available
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "package.json" }}
+            - v1-dependencies-
+
+    # Restore cached dependencies if available
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "package.json" }}
+            - v1-dependencies-
+
+       # Clear npm cache to avoid outdated dependencies
+      - run:
+          name: Clear npm cache
+          command: npm cache clean --force
+
+       # Install dependencies
+      - run:
+          name: Install dependencies
+          command: npm install
+
+      # Save dependency cache
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-dependencies-{{ checksum "package.json" }}
+
+      # Run tests
+      - run:
+          name: Run tests
+          command: npm test
+
+      # Build and push Docker image on success
+      - run:
+          name: Build and Push Docker Image
+          when: on_success
+          command: |
+            docker --version
+            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            docker build -t $DOCKER_USERNAME/$CIRCLE_PROJECT_REPONAME:$CIRCLE_BRANCH .
+            docker push $DOCKER_USERNAME/$CIRCLE_PROJECT_REPONAME:$CIRCLE_BRANCH
+            echo "Docker build successfully completed!"
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - build
