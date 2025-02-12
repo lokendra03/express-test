@@ -7,10 +7,14 @@
 #   aws-cli: circleci/aws-cli@5.2.0 # ✅ Secure AWS CLI Orb for authentication
 #   aws-eks: circleci/aws-eks@2.2.0 # ✅ Kubernetes Orb for deploying
 
+# docker-executor:
+#     docker:
+#       - image: cimg/python:3.10.7
+#     resource_class: medium  # ✅ Now resource_class is properly assign
+
 # jobs:
 #   install_helm_chart:
-#     docker:
-#       - image: cimg/python:3.13.2
+#     executor: docker-executor  # ✅ Using the defined executor
 #     resource_class: medium
 #     steps:
 #       - checkout
@@ -54,6 +58,7 @@
 #   build_and_deploy:
 #     jobs:
 #       - aws-ecr/push-image:
+#           executor: docker-executor  # ✅ Using the defined executor
 #           aws-access-key-id: AWS_ACCESS_KEY_ID
 #           aws-secret-access-key: AWS_SECRET_ACCESS_KEY
 #           aws-session-token: AWS_SESSION_TOKEN
@@ -113,6 +118,9 @@ jobs:
             echo "aws_session_token = $AWS_SESSION_TOKEN" >> ~/.aws/credentials
             echo "[default]" > ~/.aws/config
             echo "region = $AWS_DEFAULT_REGION" >> ~/.aws/config
+      - run:
+          name: Verify AWS Authentication
+          command: aws sts get-caller-identity
       - run:
           name: "docker login"
           command: |
