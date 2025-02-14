@@ -8,4 +8,8 @@ describe('GET /api/v1/forms/test', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ message: 'pong' });
   });
+
+  it('should fail', () => {
+    expect(true).toBe(false);
+  })
 });
